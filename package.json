@@ -1,0 +1,21 @@
+{
+  "name": "wiki_fencing",
+  "version": "1.0.0",
+  "description": "An automatic Wikipedia filler for fencing",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "wikipedia",
+    "fencing",
+    "parser"
+  ],
+  "author": "TAlone",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "nodemw": "^0.12.1",
+    "request": "^2.87.0"
+  }
+}
