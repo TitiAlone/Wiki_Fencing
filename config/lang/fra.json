@@ -5,8 +5,8 @@
 		"sabre": "Sabre"
 	},
 	"genders": {
-		"women": "Femme",
-		"men": "Homme"
+		"women": "Femmes",
+		"men": "Hommes"
 	},
 	"types": {
 		"individual": "Individuel",
