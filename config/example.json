@@ -1,0 +1,18 @@
+// Remove all comments to get it working
+{
+	"bot": {				// Bot related parameters, see nodemw documentation
+		"protocol": "https",			// default is 'http'
+		"server": "fr.wikipedia.org",	// mainly used for language
+		"path": "/w",					// path to api.php script
+		"debug": false,					// is more verbose when set to true
+		"userAgent": "Custom UA",		// define bot's user agent
+		"concurrency": 5				// how many API requests can be run in parallel (defaults to 3)
+	},
+	"features": {		// Optional and experimental features
+		"wiki_req": false,				// wikipedia query for names accentuation
+		"translate_countries": false	// tranlsate countries names
+	},
+	"lang": "fra",			// What wikipedia version to look for
+	"schedule_dir": "./config/scheduled", // Default schedule directory
+	"default_nat": "INC"	// Default nation name (for unknown / FIE)
+}

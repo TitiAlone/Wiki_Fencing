@@ -1,0 +1,15 @@
+{
+	"weapons": {
+		"foil": "Fleuret",
+		"epee": "Épée",
+		"sabre": "Sabre"
+	},
+	"genders": {
+		"women": "Femme",
+		"men": "Homme"
+	},
+	"types": {
+		"individual": "Individuel",
+		"team": "Équipe"
+	}
+}

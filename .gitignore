@@ -23,4 +23,5 @@ node_modules/
 *.tgz
 
 # Personal configuration
-config/talone.js
+config/*.json
+!config/example.json
