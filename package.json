@@ -4,7 +4,7 @@
   "description": "An automatic Wikipedia filler for fencing",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "app": "node app.js"
   },
   "keywords": [
     "wikipedia",
