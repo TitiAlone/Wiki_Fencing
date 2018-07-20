@@ -11,5 +11,10 @@
 	"types": {
 		"individual": "Individuel",
 		"team": "Équipe"
+	},
+	"tables": {
+		"t8": "<!--rencontres 1/4 finale -->",
+		"t4": "<!--rencontres 1/2 finale -->",
+		"t2": "<!-- finale -->"
 	}
 }

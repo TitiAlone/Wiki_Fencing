@@ -31,14 +31,8 @@ function getCommand() {
 		switch(ans) {
 			case 'e': // Exit
 			case 'q': // Quit
-				fs.writeFile("./config/dictionnary.json", JSON.stringify(globalDict), { flag:'w' }, function(e) {
-					if(e) {
-						console.error(e);
-						return;
-					}
-
-					process.exit(0);
-				});
+				// First save the current dictionnary
+				saveDict();
 			break;
 
 			case 'r': // Refresh schedule
@@ -47,6 +41,12 @@ function getCommand() {
 
 			case 'f': // Force refresh results
 				refreshResults();
+			break;
+
+			case 'd': // add a list of names to Dictionnary
+				user.question("List?", (l) => {
+					addToDict(l);
+				});
 			break;
 		}
 
@@ -65,6 +65,38 @@ bot.logIn((e, data) => {
 
 	getCommand();
 });
+
+// Pre-parse a list of names
+function addToDict(file) {
+	fs.readFile(file, "utf8", (e, data) => {
+		if(e) {
+			console.error(e);
+			return;
+		}
+
+		const namesNations = data.split("\n");
+
+		for(let nn = 0; nn < namesNations.length; nn += 2) {
+			if(namesNations[nn] !== "") {
+				fmtName(namesNations[nn], namesNations[nn + 1]);
+			}
+		}
+
+		getCommand();
+	});
+}
+
+function saveDict() {
+	fs.writeFile("./config/dictionnary.json", JSON.stringify(globalDict), { flag:'w' }, function(e) {
+		if(e) {
+			console.error(e);
+			return;
+		}
+
+		// Then quit... bye bye!
+		process.exit(0);
+	});
+}
 
 // Parse the schedule directory to search for new events
 function refreshSchedule() {
@@ -105,7 +137,8 @@ function refreshSchedule() {
 
 				if(!found) {
 					// Easier for further manipulation
-					d.results = d.schedule;
+					// But awful way to clone (and not copy) an object
+					d.results = JSON.parse(JSON.stringify(d.schedule));
 					schedule.push(d);
 
 					console.log("Added to schedule.");
@@ -115,9 +148,12 @@ function refreshSchedule() {
 	});
 }
 
+// TODO: (regression) This should not update only one at once
 // Loops in loops in loops... to get all the results at once
 function refreshResults(wikiUpdate=true) {
 	schedule.forEach((competition, index) => {
+		const MAX_TABLE = Math.log2(competition.from);
+
 		for(let type in competition.schedule) {
 			for(let weapon in competition.schedule[type]) {
 				for(let gender in competition.schedule[type][weapon]) {
@@ -143,18 +179,26 @@ function refreshResults(wikiUpdate=true) {
 
 							// Edit the main page
 							if(wikiUpdate) {
-								const wiki = wikiFmt(schedule[index].results[type][weapon][gender], false, 8);
+								const wiki = wikiFmt(schedule[index].results[type][weapon][gender], false, competition.from);
 
-								editPage(
-									competition.name,
-									[
-										"== " + lang.weapons[weapon.trim()].trim() + " ==",
-										"=== " + lang.genders[gender.trim()].trim() + " ===",
-										"==== " + lang.types[type.trim()].trim() + " ====",
-										"<!--rencontres 1/4 finale -->"
-									],
-									wiki[0]
-								);
+								for(let w = 0; w < wiki.length; w++) {
+									console.log(w);
+									const table = Math.pow(2, MAX_TABLE - w);
+
+									editPage(
+										competition.name,
+										[
+											"== " + lang.weapons[weapon.trim()].trim() + " ==",
+											"=== " + lang.genders[gender.trim()].trim() + " ===",
+											"==== " + lang.types[type.trim()].trim() + " ====",
+											lang.tables["t" + table]
+										],
+										wiki[w],
+										"Résultats T" + table
+									);
+								}
+
+								console.log("Wiki updated.");
 							}
 						});
 					}
@@ -187,8 +231,10 @@ function fmtName(name, nation) {
 				return;
 			}
 
+			// If we get something, write it
 			if(data[1].length >= 1) {
 				globalDict[name] = data[1][0];
+			// If note, tell the program we already requested that name
 			} else {
 				globalDict[name] = "NONE";
 			}
@@ -205,9 +251,10 @@ function fmtName(name, nation) {
 	}
 }
 
-function editPage(name, parts, content) {
+function editPage(name, parts, content, message) {
 	var pageContent = "";
 
+	// First, get the article and save it's data
 	bot.getArticle(name, (e, data) => {
 		if(e) {
 			console.error(e);
@@ -222,6 +269,7 @@ function editPage(name, parts, content) {
 
 		var i = 0;
 
+		// Search for some keywords, in order
 		for(let p = 0; p < parts.length; p++) {
 			while(lines[i].trim() != parts[p].trim() && i < lines.length - 1) {
 				i++;
@@ -234,6 +282,7 @@ function editPage(name, parts, content) {
 			return;
 		}
 
+		// Then, after the keyword, *replace* the next lines with what we provided
 		const contentLines = content.split('\n');
 
 		for(let l = 0; l < contentLines.length; l++) {
@@ -242,7 +291,8 @@ function editPage(name, parts, content) {
 
 		pageContent = lines.join('\n');
 
-		bot.edit(name, pageContent, "[bot] Added some results", true, () => {
+		// Edit the wiki, with a little message
+		bot.edit(name, pageContent, "[bot] " + message, true, () => {
 			console.log("Page modified.");
 		});
 	});
