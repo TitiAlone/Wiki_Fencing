@@ -1,0 +1,27 @@
+{
+	"name": "Championnats du monde d'escrime 2018",
+	"from": 8,
+	"details": true,
+	"detailsFrom": 64,
+	"website": "ft",
+	"schedule": {
+		"individual": {
+			"foil": {
+				"woman": {
+					"from": 1435010000000,
+					"to": 1535049000000,
+					"page": "Fleuret dames aux championnats du monde d'escrime 2018",
+					"link": "https://www.fencingtimelive.com/tableaus/scores/E8BAC17F0FE446F9A0DB5E48560B157F/2E4B2FFA426E492DB3115DEC5460AD52/trees/D83FE98E40D949469CB7B582E1DB730B/tables/0/6"
+				}
+			},
+			"epee": {
+				"men": {
+					"from": 1435005800000,
+					"to": 1535049000000,
+					"page": "Épée messieurs aux championnats du monde d'escrime 2018",
+					"link": "https://www.fencingtimelive.com/tableaus/scores/951F79E0C15E4F44B1CCC2282429B643/AA1C8F72BE024272B75DDF9BB895DD34/trees/378035A060364F818A04F5EFD35872A8/tables/0/6"
+				}
+			}
+		}
+	}
+}

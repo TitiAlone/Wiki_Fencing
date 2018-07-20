@@ -10,11 +10,22 @@
 	},
 	"types": {
 		"individual": "Individuel",
+		"individualDetails": "Épreuve individuelle",
 		"team": "Équipe"
 	},
 	"tables": {
+		"t16": "<!--rencontres 1/8 finale -->",
 		"t8": "<!--rencontres 1/4 finale -->",
 		"t4": "<!--rencontres 1/2 finale -->",
 		"t2": "<!-- finale -->"
-	}
+	},
+	"words": {
+		"findDetails": "Premiers tours",
+		"ordinal": ["Non", "Première", "Deuxième", "Troisième", "Quatrième"]
+	},
+	"details": [
+		"==Épreuve individuelle==",
+		"===Premiers tours===",
+		"====Première partie===="
+	]
 }

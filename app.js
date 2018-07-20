@@ -31,8 +31,8 @@ function getCommand() {
 		switch(ans) {
 			case 'e': // Exit
 			case 'q': // Quit
-				// First save the current dictionnary
-				saveDict();
+				// First save everything
+				saveAll();
 			break;
 
 			case 'r': // Refresh schedule
@@ -43,7 +43,7 @@ function getCommand() {
 				refreshResults();
 			break;
 
-			case 'd': // add a list of names to Dictionnary
+			case 'd': // Add a list of names to Dictionnary
 				user.question("List?", (l) => {
 					addToDict(l);
 				});
@@ -86,7 +86,7 @@ function addToDict(file) {
 	});
 }
 
-function saveDict() {
+function saveAll() {
 	fs.writeFile("./config/dictionnary.json", JSON.stringify(globalDict), { flag:'w' }, function(e) {
 		if(e) {
 			console.error(e);
@@ -150,9 +150,10 @@ function refreshSchedule() {
 
 // TODO: (regression) This should not update only one at once
 // Loops in loops in loops... to get all the results at once
-function refreshResults(wikiUpdate=true) {
+function refreshResults(wikiUpdate=true, mainPage=false) {
 	schedule.forEach((competition, index) => {
 		const MAX_TABLE = Math.log2(competition.from);
+		const MAX_SUB = Math.log2(competition.detailsFrom);
 
 		for(let type in competition.schedule) {
 			for(let weapon in competition.schedule[type]) {
@@ -176,29 +177,53 @@ function refreshResults(wikiUpdate=true) {
 							schedule[index].results[type][weapon][gender] = scraper(competition.website, body, fmtName);
 
 							console.log("Results refreshed!");
-
+//1535010000000
 							// Edit the main page
 							if(wikiUpdate) {
-								const wiki = wikiFmt(schedule[index].results[type][weapon][gender], false, competition.from);
+								if(mainPage) {
+									const wiki = wikiFmt(schedule[index].results[type][weapon][gender], false, competition.from);
+									const page = new PageEditor(competition.name);
 
-								for(let w = 0; w < wiki.length; w++) {
-									console.log(w);
-									const table = Math.pow(2, MAX_TABLE - w);
+									for(let w = 0; w < wiki.length; w++) {
+										const table = Math.pow(2, MAX_TABLE - w);
 
-									editPage(
-										competition.name,
-										[
+										page.addModificator([
 											"== " + lang.weapons[weapon.trim()].trim() + " ==",
 											"=== " + lang.genders[gender.trim()].trim() + " ===",
 											"==== " + lang.types[type.trim()].trim() + " ====",
 											lang.tables["t" + table]
-										],
-										wiki[w],
-										"Résultats T" + table
-									);
+										], wiki[w]);
+
+										page.addCommitMessage("T" + table + ", ");
+									}
+
+									page.submitPage();
+									console.log("Wiki main update.");
 								}
 
-								console.log("Wiki updated.");
+								const wiki = wikiFmt(schedule[index].results[type][weapon][gender], false, competition.detailsFrom, competition.from * 2);
+								const page = new PageEditor(competition.schedule[type][weapon][gender].page);
+
+								console.log("Editing " + competition.schedule[type][weapon][gender].page + "...");
+
+								for(let w = 0; w < wiki.length; w++) {
+									const fragments = wiki[w].split("\n\n");
+									const table = Math.pow(2, MAX_SUB - w);
+
+									for(let f = 0; f < fragments.length; f++) {
+										page.addModificator([
+											"==" + lang.types[type.trim() + "Details"].trim() + "==",
+											"===" + lang.words["findDetails"].trim() + "===",
+											"====" + lang.words.ordinal[f + 1].trim() + " partie====",
+											lang.tables["t" + (table / fragments.length)]
+										], fragments[f]);
+									}
+
+									page.addCommitMessage("T" + table + ", ");
+								}
+
+								page.submitPage();
+								console.log("Wiki sub-page update.");
 							}
 						});
 					}
@@ -213,7 +238,7 @@ function fmtName(name, nation) {
 	name = nameFmt(name, nation);
 
 	// Initiate a request to the API
-	if(!(name in globalDict)) {
+	if(!(name in globalDict) && name.trim() != "") {
 		bot.api.call({
 			// We want to search something, without logging in
 			"action": "opensearch",
@@ -251,49 +276,69 @@ function fmtName(name, nation) {
 	}
 }
 
-function editPage(name, parts, content, message) {
-	var pageContent = "";
+// Centralization of page modification because Wikipedia can't stand more than
+// two updates in a row.
+class PageEditor {
+	constructor(name) {
+		this.name = name;
+		this.modificators = [];
+		this.commit = "[bot] ";
+	}
 
-	// First, get the article and save it's data
-	bot.getArticle(name, (e, data) => {
-		if(e) {
-			console.error(e);
-			return;
-		}
+	addModificator(parts, content) {
+		this.modificators.push({ parts: parts, content: content.split('\n') });
+	}
 
-		pageContent = data;
+	addCommitMessage(message) {
+		this.commit += message;
+	}
 
-		console.log("Content updating...");
-
-		const lines = pageContent.split('\n');
-
-		var i = 0;
-
-		// Search for some keywords, in order
-		for(let p = 0; p < parts.length; p++) {
-			while(lines[i].trim() != parts[p].trim() && i < lines.length - 1) {
-				i++;
+	submitPage() {
+		// First, get the article and save it's data
+		bot.getArticle(this.name, (e, data) => {
+			if(e) {
+				console.error(e);
+				return;
 			}
-		}
 
-		// End of the file, we did not found anything...
-		if(i >= lines.length - 1) {
-			console.error("Searched terms were not found.");
-			return;
-		}
+			let pageContent = data;
 
-		// Then, after the keyword, *replace* the next lines with what we provided
-		const contentLines = content.split('\n');
+			console.log("Content updating...");
 
-		for(let l = 0; l < contentLines.length; l++) {
-			lines[++i] = contentLines[l];
-		}
+			const lines = pageContent.split('\n');
 
-		pageContent = lines.join('\n');
+			// Apply each modificator
+			for(let m = 0; m < this.modificators.length; m++) {
+				let i = 0;
+				// Search for keywords, in order
+				for(let p = 0; p < this.modificators[m].parts.length; p++) {
+					while(lines[i].trim() != this.modificators[m].parts[p].trim() && i < lines.length - 1) {
+						i++;
+					}
+				}
 
-		// Edit the wiki, with a little message
-		bot.edit(name, pageContent, "[bot] " + message, true, () => {
-			console.log("Page modified.");
+				// End of the file, we did not found anything...
+				// Go to the next modificator
+				if(i >= lines.length - 1) {
+					console.error("Searched terms were not found.");
+					continue;
+				}
+
+				//
+				for(let l = 0; l < this.modificators[m].content.length; l++) {
+					if(this.modificators[m].content[l].trim() != "") {
+						lines[++i] = this.modificators[m].content[l];
+					}
+				}
+			}
+
+			// Then, after the keyword, *replace* the next lines with what we provided
+			pageContent = lines.join('\n');
+
+			// Edit the wiki, with a little message
+			bot.edit(this.name, pageContent, this.commit, true, () => {
+				console.log("Page modified.");
+			});
 		});
-	});
+	}
 }
