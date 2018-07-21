@@ -23,7 +23,7 @@ const	bot			= new mw(config.bot),
 		});
 
 // Main variables
-const	schedule		= [];
+const	schedule		= {};
 
 // Add array comparaison possibility
 // see https://stackoverflow.com/questions/7837456/how-to-compare-arrays-in-javascript
@@ -110,19 +110,23 @@ function addToDict(file) {
 }
 
 function saveAll() {
-	fs.writeFile("./config/dictionnary.json", JSON.stringify(globalDict), { flag:'w' }, function(e) {
+	fs.writeFile("./config/dictionnary.json", JSON.stringify(globalDict), { flag: 'w' }, function(e) {
 		if(e) {
 			console.error(e);
 			return;
 		}
 
-		// Then quit... bye bye!
-		process.exit(0);
+		// Then quit after saving the results
+		refreshSchedule(() => {
+			console.log("Bye bye!")
+			process.exit(0);
+		});
 	});
 }
 
 // Parse the schedule directory to search for new events
-function refreshSchedule() {
+// TODO: automatically delete old competitions
+function refreshSchedule(save=false) {
 	// Select every file in the schedule directory
 	fs.readdir(config.schedule_dir, (e, files) => {
 		if(e) {
@@ -144,28 +148,28 @@ function refreshSchedule() {
 
 				console.log("Competition name: " + d.name + ".");
 
-				var found = false;
-
-				// If the competition is already in schedule, only change datetimes
-				for(let i = 0; i < schedule.length; i++) {
-					if(schedule[i].name.trim() == d.name.trim()) {
-						schedule[i].schedule = data.schedule;
-
-						found = true;
-						break;
-					}
-				}
-
-				// TODO: delete old competitions
-
-				if(!found) {
+				// If the competition isn't already in schedule
+				if(typeof schedule[f] !== "object") {
 					// Easier for further manipulation
 					// But awful way to clone (and not copy) an object
-					d.results = JSON.parse(JSON.stringify(d.schedule));
-					schedule.push(d);
+					if(typeof d.results !== "object") {
+						d.results = JSON.parse(JSON.stringify(d.schedule));
+					}
+
+					schedule[f] = d;
 
 					console.log("Added to schedule.");
-				} else console.log("Refreshed.")
+				} else {
+					// If the competition is already in schedule, only change datetimes
+					schedule[f].schedule = d.schedule;
+					console.log("Refreshed.");
+				}
+
+				// If we want to save the results
+				if(typeof save === "function") {
+					console.log("Saving results.");
+					fs.writeFile(config.schedule_dir + '/' + f, JSON.stringify(schedule[f]), { flag: 'w' }, save);
+				}
 			});
 		});
 	});
@@ -174,7 +178,8 @@ function refreshSchedule() {
 // Loops in loops in loops... to get all the results at once
 function refreshResults(wikiUpdate=true, mainPage=false) {
 	// Iterate over each competition
-	schedule.forEach((competition, index) => {
+	for(let index in schedule) {
+		const competition = schedule[index];
 		// Fetch the global competition page
 		const globalPage = new PageEditor(competition.name);
 
@@ -273,7 +278,7 @@ function refreshResults(wikiUpdate=true, mainPage=false) {
 		}
 
 		console.log("Competition done!");
-	});
+	}
 }
 
 // This function is very special: it request everything *async*, so it'll sometimes throw a bad name
