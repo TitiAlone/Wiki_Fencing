@@ -25,6 +25,29 @@ const	bot			= new mw(config.bot),
 // Main variables
 const	schedule		= [];
 
+// Add array comparaison possibility
+// see https://stackoverflow.com/questions/7837456/how-to-compare-arrays-in-javascript
+Array.prototype.equals = function(array) {
+	if(!Array.isArray(array)) { return false; }
+
+	for(var i = 0; i < this.length; i++) {
+		// Check if we have nested arrays
+		if(this[i] instanceof Array && array[i] instanceof Array) {
+			// Recurse into the nested arrays
+			if(!this[i].equals(array[i]))
+				return false;
+		} else if(this[i] != array[i]) {
+			// Warning - two different object instances will never be equal: {x:20} != {x:20}
+			return false;
+		}
+	}
+
+	return true;
+};
+
+// Hide method from for-in loops
+Object.defineProperty(Array.prototype, "equals", { enumerable: false });
+
 // Loop forever waiting for user commands
 function getCommand() {
 	user.question("?", (ans) => {
@@ -148,13 +171,16 @@ function refreshSchedule() {
 	});
 }
 
-// TODO: (regression) This should not update only one at once
 // Loops in loops in loops... to get all the results at once
 function refreshResults(wikiUpdate=true, mainPage=false) {
+	// Iterate over each competition
 	schedule.forEach((competition, index) => {
-		const MAX_TABLE = Math.log2(competition.from);
-		const MAX_SUB = Math.log2(competition.detailsFrom);
+		// Fetch the global competition page
+		const globalPage = new PageEditor(competition.name);
 
+		console.log("Competition " + competition.name + ": ");
+
+		// Iterate over type, weapon and gender (yep, that's a lot)
 		for(let type in competition.schedule) {
 			for(let weapon in competition.schedule[type]) {
 				for(let gender in competition.schedule[type][weapon]) {
@@ -163,6 +189,11 @@ function refreshResults(wikiUpdate=true, mainPage=false) {
 						competition.schedule[type][weapon][gender].to	> Date.now()	&&
 						competition.schedule[type][weapon][gender].from	< Date.now()
 					) {
+						// Fetch the local competition page
+						const localPage = new PageEditor(competition.schedule[type][weapon][gender].page);
+
+						console.log("Sub-page: " + competition.schedule[type][weapon][gender].page);
+
 						// Get the tableau online
 						request(competition.schedule[type][weapon][gender].link, (e, res, body) => {
 							if(e) {
@@ -170,66 +201,78 @@ function refreshResults(wikiUpdate=true, mainPage=false) {
 								return;
 							}
 
-							console.log("Competition " + competition.name + ": ")
 							console.log("Asked for tableau: " + res.statusCode + ".");
 
-							// Refresh our results
-							schedule[index].results[type][weapon][gender] = scraper(competition.website, body, fmtName);
+							// Parse new results
+							const results = scraper(competition.website, body, fmtName);
 
-							console.log("Results refreshed!");
-//1535010000000
-							// Edit the main page
-							if(wikiUpdate) {
-								if(mainPage) {
-									const wiki = wikiFmt(schedule[index].results[type][weapon][gender], false, competition.from);
-									const page = new PageEditor(competition.name);
+							let change = false;
 
-									for(let w = 0; w < wiki.length; w++) {
-										const table = Math.pow(2, MAX_TABLE - w);
+							// Iterate over each table (t64, t32, ...)
+							for(let table in results) {
+								// Test if our results have changed
+								if(!results[table].equals(schedule[index].results[type][weapon][gender][table])) {
+									change = true;
+									console.log("Table of " + table);
 
-										page.addModificator([
+									// Convert the table into Wikicode
+									const	wikicode	= wikiFmt(results[table], type == "team");
+									const	reqTable	= parseInt(table.slice(1)) / wikicode.length;
+
+									// For each subdivision of the code (cf. tableau in four parts)
+									for(let c = 0; c < wikicode.length; c++) {
+										localPage.addModificator([
+											"==" + lang.types[type.trim() + "Details"].trim() + "==",
+											"===" + lang.words["findDetails"].trim() + "===",
+											"====" + lang.words.ordinal[c + 1].trim() + " partie====",
+											lang.tables["t" + reqTable]
+										], wikicode[c]);
+									}
+
+									// State what we changed
+									localPage.addCommitMessage(table + ", ");
+
+									// Sometimes, we want to edit the global page
+									if(table == "t8" || table == "t4" || table == "t2") {
+										console.log("Editing global page");
+
+										globalPage.addModificator([
 											"== " + lang.weapons[weapon.trim()].trim() + " ==",
 											"=== " + lang.genders[gender.trim()].trim() + " ===",
 											"==== " + lang.types[type.trim()].trim() + " ====",
-											lang.tables["t" + table]
-										], wiki[w]);
+											lang.tables[table]
+										], wikicode.join('\n'));
 
-										page.addCommitMessage("T" + table + ", ");
+										// State what we changed
+										globalPage.addCommitMessage(lang.weapons[weapon.trim()].trim() + " " + lang.genders[gender.trim()].trim() + " - " + table + " ; ");
 									}
 
-									page.submitPage();
-									console.log("Wiki main update.");
+									// Finally update the competition results into local memory
+									schedule[index].results[type][weapon][gender][table] = results[table];
+								} else {
+									console.log("Table of " + table + " did not changed.");
 								}
-
-								const wiki = wikiFmt(schedule[index].results[type][weapon][gender], false, competition.detailsFrom, competition.from * 2);
-								const page = new PageEditor(competition.schedule[type][weapon][gender].page);
-
-								console.log("Editing " + competition.schedule[type][weapon][gender].page + "...");
-
-								for(let w = 0; w < wiki.length; w++) {
-									const fragments = wiki[w].split("\n\n");
-									const table = Math.pow(2, MAX_SUB - w);
-
-									for(let f = 0; f < fragments.length; f++) {
-										page.addModificator([
-											"==" + lang.types[type.trim() + "Details"].trim() + "==",
-											"===" + lang.words["findDetails"].trim() + "===",
-											"====" + lang.words.ordinal[f + 1].trim() + " partie====",
-											lang.tables["t" + (table / fragments.length)]
-										], fragments[f]);
-									}
-
-									page.addCommitMessage("T" + table + ", ");
-								}
-
-								page.submitPage();
-								console.log("Wiki sub-page update.");
 							}
+
+							console.log("All tables done!");
+							// Remove the last comma from the message and add a dot
+							localPage.commit = localPage.commit.slice(0, -2);
+							localPage.addCommitMessage('.');
+							// Finally, edit the page
+							if(wikiUpdate && change) localPage.submitPage();
+
+							// Remove the last comma from the message and add a dot
+							globalPage.commit = globalPage.commit.slice(0, -2);
+							globalPage.addCommitMessage('.');
+							// Finally, edit the page
+							if(wikiUpdate && mainPage && change) globalPage.submitPage();
 						});
 					}
 				}
 			}
 		}
+
+		console.log("Competition done!");
 	});
 }
 
@@ -324,7 +367,7 @@ class PageEditor {
 					continue;
 				}
 
-				//
+				// Apply each modificator
 				for(let l = 0; l < this.modificators[m].content.length; l++) {
 					if(this.modificators[m].content[l].trim() != "") {
 						lines[++i] = this.modificators[m].content[l];
