@@ -86,8 +86,13 @@ bot.logIn((e, data) => {
 
 	console.log("Bot logged in!");
 
+	// Get the initial schedule and request a command
+	refreshSchedule();
 	getCommand();
 });
+
+// Every 5 minutes, refresh the results
+setInterval(refreshResults, 300000);
 
 // Pre-parse a list of names
 function addToDict(file) {
