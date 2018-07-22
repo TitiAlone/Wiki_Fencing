@@ -3,7 +3,8 @@ const	mw			= require("nodemw"),
 		fs			= require("fs"),
 		parser		= require("cheerio"),
 		request		= require("request"),
-		readline	= require('readline');
+		readline	= require('readline'),
+		express		= require('express');
 
 // Internal parsers
 const	scraper		= require("./lib/scrapers/default"),
@@ -86,8 +87,9 @@ bot.logIn((e, data) => {
 
 	console.log("Bot logged in!");
 
-	// Get the initial schedule and request a command
+	// Get the initial schedule, start the UI and request a command
 	refreshSchedule();
+	startServer();
 	getCommand();
 });
 
@@ -327,6 +329,19 @@ function fmtName(name, nation) {
 	} else {
 		return name;
 	}
+}
+
+function startServer() {
+	express()
+		.use(express.static("./public/assets"))
+		.set("views", "./public/views")
+		.set("view engine", "ejs")
+		.get("/", (req, res) => {
+			res.send("Bot is running!");
+		})
+		.listen(5000, () => {
+			console.log("Server launched!")
+		});
 }
 
 // Centralization of page modification because Wikipedia can't stand more than
