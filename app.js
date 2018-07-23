@@ -183,7 +183,7 @@ function refreshSchedule(save=false) {
 }
 
 // Loops in loops in loops... to get all the results at once
-function refreshResults(wikiUpdate=true, mainPage=false) {
+function refreshResults(wikiUpdate=true, mainPage=true) {
 	// Iterate over each competition
 	for(let index in schedule) {
 		const competition = schedule[index];
