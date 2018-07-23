@@ -248,6 +248,12 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 									if(table == "t8" || table == "t4" || table == "t2") {
 										console.log("Editing global page");
 
+										localPage.addModificator([
+											"==" + lang.types[type.trim() + "Details"].trim() + "==",
+											"===" + lang.words["findGlobal"].trim() + "===",
+											lang.tables[table]
+										], wikicode.join('\n'));
+
 										globalPage.addModificator([
 											"== " + lang.weapons[weapon.trim()].trim() + " ==",
 											"=== " + lang.genders[gender.trim()].trim() + " ===",

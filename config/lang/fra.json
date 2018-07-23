@@ -21,11 +21,7 @@
 	},
 	"words": {
 		"findDetails": "Premiers tours",
+		"findGlobal": "Tableau final",
 		"ordinal": ["Non", "Première", "Deuxième", "Troisième", "Quatrième"]
-	},
-	"details": [
-		"==Épreuve individuelle==",
-		"===Premiers tours===",
-		"====Première partie===="
-	]
+	}
 }
