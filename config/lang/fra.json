@@ -11,7 +11,8 @@
 	"types": {
 		"individual": "Individuel",
 		"individualDetails": "Épreuve individuelle",
-		"team": "Équipe"
+		"team": "Par équipes",
+		"teamDetails": "Épreuve par équipes"
 	},
 	"tables": {
 		"t16": "<!--rencontres 1/8 finale -->",

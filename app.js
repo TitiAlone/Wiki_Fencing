@@ -216,7 +216,9 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 							console.log("Asked for tableau: " + res.statusCode + ".");
 
 							// Parse new results
-							const results = scraper(competition.website, body, fmtName);
+							const results = scraper(competition.website, body, (n) => { return n; }, 5);
+
+							console.log(results);
 
 							let change = false;
 
@@ -230,19 +232,6 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 									// Convert the table into Wikicode
 									const	wikicode	= wikiFmt(results[table], type == "team");
 									const	reqTable	= parseInt(table.slice(1)) / wikicode.length;
-
-									// For each subdivision of the code (cf. tableau in four parts)
-									for(let c = 0; c < wikicode.length; c++) {
-										localPage.addModificator([
-											"==" + lang.types[type.trim() + "Details"].trim() + "==",
-											"===" + lang.words["findDetails"].trim() + "===",
-											"====" + lang.words.ordinal[c + 1].trim() + " partie====",
-											lang.tables["t" + reqTable]
-										], wikicode[c]);
-									}
-
-									// State what we changed
-									localPage.addCommitMessage(table + ", ");
 
 									// Sometimes, we want to edit the global page
 									if(table == "t8" || table == "t4" || table == "t2") {
@@ -263,7 +252,21 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 
 										// State what we changed
 										globalPage.addCommitMessage(lang.weapons[weapon.trim()].trim() + " " + lang.genders[gender.trim()].trim() + " - " + table + " ; ");
+									// Anyway, only the big tableau is modified
+									} else {
+										// For each subdivision of the code (cf. tableau in four parts)
+										for(let c = 0; c < wikicode.length; c++) {
+											localPage.addModificator([
+												"==" + lang.types[type.trim() + "Details"].trim() + "==",
+												"===" + lang.words["findDetails"].trim() + "===",
+												"====" + lang.words.ordinal[c + 1].trim() + " partie====",
+												lang.tables["t" + reqTable]
+											], wikicode[c]);
+										}
 									}
+
+									// State what we changed
+									localPage.addCommitMessage(table + ", ");
 
 									// Finally update the competition results into local memory
 									schedule[index].results[type][weapon][gender][table] = results[table];
