@@ -218,8 +218,6 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 							// Parse new results
 							const results = scraper(competition.website, body, fmtName, 5);
 
-							console.log(results);
-
 							let change = false;
 
 							// Iterate over each table (t64, t32, ...)
