@@ -216,7 +216,7 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 							console.log("Asked for tableau: " + res.statusCode + ".");
 
 							// Parse new results
-							const results = scraper(competition.website, body, (n) => { return n; }, 5);
+							const results = scraper(competition.website, body, fmtName, 5);
 
 							console.log(results);
 
