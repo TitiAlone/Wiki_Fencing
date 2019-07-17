@@ -1,10 +1,12 @@
+#!/usr/bin/env node
+
 // Module loading
 const	mw			= require("nodemw"),
 		fs			= require("fs"),
 		parser		= require("cheerio"),
 		request		= require("request"),
-		readline	= require('readline'),
-		express		= require('express');
+		readline	= require("readline"),
+		express		= require("express");
 
 // Internal parsers
 const	scraper		= require("./lib/scrapers/default"),
