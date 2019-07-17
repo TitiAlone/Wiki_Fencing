@@ -4,7 +4,6 @@ logs
 npm-debug.log*
 
 # Runtime data
-*-lock.json
 pids
 *.pid
 *.seed
