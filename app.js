@@ -3,8 +3,7 @@
 // Module loading
 const	mw			= require("nodemw"),
 		fs			= require("fs"),
-		parser		= require("cheerio"),
-		request		= require("request"),
+		request		= require("then-request"),
 		readline	= require("readline"),
 		express		= require("express");
 
@@ -50,6 +49,27 @@ Array.prototype.equals = function(array) {
 
 // Hide method from for-in loops
 Object.defineProperty(Array.prototype, "equals", { enumerable: false });
+
+// Try to merge two object, with priority on the new one
+const merge = function(obj, newObj) {
+	const output = {};
+
+	for(let prop in obj) {
+		if(typeof newObj[prop] === "undefined") {
+			output[prop] = obj[prop];
+		} else {
+			output[prop] = newObj[prop];
+		}
+	}
+
+	for(let prop in newObj) {
+		if(typeof obj[prop] === "undefined") {
+			output[prop] = newObj[prop];
+		}
+	}
+
+	return output;
+};
 
 // Loop forever waiting for user commands
 function getCommand() {
@@ -208,17 +228,26 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 
 						console.log("Sub-page: " + competition.schedule[type][weapon][gender].page);
 
-						// Get the tableau online
-						request(competition.schedule[type][weapon][gender].link, (e, res, body) => {
-							if(e) {
-								console.error(e);
-								return;
+						// Prepare the requests via Promises
+						const requests = new Array();
+
+						// For each link, prepare a request to the corresponding page
+						for(let l = 0; l < competition.schedule[type][weapon][gender].links.length; l++) {
+							requests.push(request("GET", competition.schedule[type][weapon][gender].links[l][0]));
+						}
+
+						// Execute the requests and wait for results
+						Promise.all(requests).then(values => {
+							console.log("All requests done successfully!")
+
+							let results = {};
+
+							// Run the scraper on each result
+							for(let v = 0; v < values.length; v++) {
+								let tempResults = scraper(competition.website)(values[v].getBody(), fmtName, competition.schedule[type][weapon][gender].links[v][1]);
+
+								results = merge(results, tempResults);
 							}
-
-							console.log("Asked for tableau: " + res.statusCode + ".");
-
-							// Parse new results
-							const results = scraper(competition.website, body, fmtName, 5);
 
 							let change = false;
 
@@ -252,8 +281,10 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 
 										// State what we changed
 										globalPage.addCommitMessage(lang.weapons[weapon.trim()].trim() + " " + lang.genders[gender.trim()].trim() + " - " + table + " ; ");
-									// Anyway, only the big tableau is modified
-									} else {
+									}
+
+									// Anyway, the big tableau is modified if we're before semifinals
+									if(table != "t4" && table != "t2") {
 										// For each subdivision of the code (cf. tableau in four parts)
 										for(let c = 0; c < wikicode.length; c++) {
 											localPage.addModificator([
@@ -287,6 +318,8 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 							globalPage.addCommitMessage('.');
 							// Finally, edit the page
 							if(wikiUpdate && mainPage && change) globalPage.submitPage();
+						}, reason => {
+							console.error(reason);
 						});
 					}
 				}

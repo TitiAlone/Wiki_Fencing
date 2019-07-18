@@ -25,6 +25,6 @@
     "cheerio": "^1.0.0-rc.2",
     "express": "^4.16.3",
     "nodemw": "^0.12.1",
-    "request": "^2.87.0"
+    "then-request": "^6.0.2"
   }
 }
