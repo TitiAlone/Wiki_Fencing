@@ -242,14 +242,21 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 
 							let results = {};
 
+							// Select a formatter depending on the type
+							const	fmt			= type === "team" ? (n) => { return n; } : fmtName;
+
 							// Run the scraper on each result
 							for(let v = 0; v < values.length; v++) {
-								let tempResults = scraper(competition.website)(values[v].getBody(), fmtName, competition.schedule[type][weapon][gender].links[v][1]);
+								let tempResults = scraper(competition.website)(values[v].getBody(), fmt, competition.schedule[type][weapon][gender].links[v][1]);
 
 								results = merge(results, tempResults);
 							}
 
 							let change = false;
+
+							// Right now, T64 is shitty for team events
+							// This is a bug, not a feature
+							if(type === "team") delete results["t64"];
 
 							// Iterate over each table (t64, t32, ...)
 							for(let table in results) {
@@ -259,7 +266,7 @@ function refreshResults(wikiUpdate=true, mainPage=true) {
 									console.log("Table of " + table);
 
 									// Convert the table into Wikicode
-									const	wikicode	= wikiFmt(results[table], type == "team");
+									const	wikicode	= wikiFmt(results[table], type === "team");
 									const	reqTable	= parseInt(table.slice(1)) / wikicode.length;
 
 									// Sometimes, we want to edit the global page
